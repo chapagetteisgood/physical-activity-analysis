@@ -20,4 +20,4 @@ R, ggplot2, dplyr
 
 ## Author
 
-Vincent Pham - Data Science, University of Wisconsin-Madison
+Vincent Pham 
