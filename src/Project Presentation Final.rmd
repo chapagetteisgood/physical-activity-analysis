@@ -1,0 +1,250 @@
+---
+title: "STAT240 DIS002 Final Project Report"
+date: "2025-12-02"
+author: " Group Members: Umika, Jennie, Kevin and Vincent" 
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+## Introduction
+
+Physical activity is widely recognized as a crucial factor in maintaining healthy body weight and overall wellness. Despite this knowledge, sedentary lifestyles have become increasingly common in modern society, contributing to rising rates across the globe. Understanding the relationship between physical activity frequency and body weight is essential for developing effective public health interventions and personal health strategies.
+
+With this in mind, we will be examining the relationship between physical activity levels and body weight using data from individuals across Mexico, Peru, and Colombia. The main question we will be answering is: **"Is there a significant difference in mean body weight between individuals with low physical activity frequency and high physical activity frequency?"** By quantifying this relationship through statistical analysis, health organizations can make more informed decisions about where to focus resources for promoting physical activity and design better intervention programs for at-risk groups. Additionally, these findings could help shape workplace wellness programs, influence urban planning to encourage walking and biking, and support public health campaigns that demonstrate the real benefits of regular exercise.
+
+Based on our analysis, we found that people who exercise regularly do weigh less on average compared to people who don't exercise much.
+
+## Background
+
+### Data Sources
+
+**Raw data:** The dataset used in this analysis was sourced from the UC Irvine Machine Learning Repository ([Estimation of Obesity Levels](https://archive.ics.uci.edu/dataset/544/estimation+of+obesity+levels+based+on+eating+habits+and+physical+condition)), collected by Fabio Mendoza Palechor and Alexis De La Hoz Manotas in 2019. It records data on obesity levels, eating habits, and physical activity from individuals in Mexico, Peru, and Colombia.
+
+The data was collected through two methods:
+
+- **Direct Collection (23%)**: Approximately 483 records were collected directly from users through a web-based platform where participants self-reported their information.
+- **Synthetic Generation (77%)**: Approximately 1,628 records were generated synthetically using the Weka tool and SMOTE (Synthetic Minority Over-sampling Technique) filter to balance the dataset and increase sample size while maintaining realistic patterns.
+
+**Variables:**
+
+- **Weight**: Body weight in kilograms. This is our outcome variable, representing the physical characteristic we are examining.
+- **FAF (Frequency of Physical Activity)**: How often an individual engages in physical activity, measured in frequency units ranging from 0 to 3. A higher value indicates more frequent physical activity. This is our explanatory variable.
+- **Gender**: Biological sex of the participant (Male/Female).
+- **Age**: Age of the participant in years.
+- **Height**: Height in meters.
+- **NObeyesdad**: Obesity classification level.
+
+These variables provide information about individuals' physical characteristics and activity patterns. We find that the data is well-structured with no unusual patterns in the key variables of interest.
+
+**Data Structure:**
+
+- **Rows**: Each row represents a single individual's complete health profile, including their physical activity frequency, weight, and lifestyle characteristics.
+- **Sample Size**: The sample size is 2,111, consisting of individuals from diverse demographic backgrounds with ages ranging from 14 to 61 years, both male and female genders. Although the dataset includes a proportion of synthetically generated records, these records were created on realistic patterns based on actual collected data. Therefore, we assume this dataset is sufficient enough for hypothesis testing.
+
+Since we are examining the difference in body weight between low and high physical activity groups, our key variables are body weight (continuous/numbers) and physical activity frequency (high/low). These variables come from both directly collected and synthetically generated data collection.
+
+### Data Cleaning and Processing
+
+```{r}
+obesity <- read.csv("ObesityDataSet_raw_and_data_sinthetic.csv")
+
+```
+
+**Data Cleaning:** 
+Before conducting our analysis, we examined the dataset for any issues that could affect our results. We checked for missing values in the key variables (Weight, FAF, Gender, Age, and Height) and found that the dataset was complete with no missing data points that needed to be removed. We also looked for any obvious outliers or data entry errors, such as impossible weight or height values, but the data appeared reasonable and consistent. Since the dataset was already well-maintained, we did not need to perform extensive cleaning procedures like removing incomplete observations or correcting incorrect entries.
+The dataset was processed to create two distinct groups based on physical activity frequency:
+
+- **Low Physical Activity Group**: Individuals with FAF < 1.5 (representing little to no regular physical activity)
+- **High Physical Activity Group**: Individuals with FAF ≥ 1.5 (representing regular physical activity)
+
+We chose 1.5 as our cutoff value because it represents the midpoint of the FAF scale (0-3) and creates a meaningful distinction between individuals who engage in physical activity less than weekly versus those who exercise more regularly. This threshold allows us to compare individuals with minimal physical activity against those who maintain a more consistent exercise routine, which aligns with public health guidelines that emphasize regular physical activity for health benefits.
+
+```{r}
+obesity <- obesity %>%
+  mutate(Activity_Level = ifelse(FAF < 1.5, "Low Activity", "High Activity"))
+
+summary_stats <- obesity %>%
+  group_by(Activity_Level) %>%
+  summarise(
+    n = n(),
+    mean_weight = mean(Weight),
+    sd_weight = sd(Weight),
+    median_weight = median(Weight)
+  )
+```
+
+### Exploratory Visualizations
+
+```{r}
+ggplot(obesity, aes(x = Activity_Level, y = Weight, fill = Activity_Level)) +
+  geom_boxplot(alpha = 0.7) +
+  scale_fill_manual(values = c("Low Activity" = "#7fbfff", "High Activity" = "#ff7f7f")) +
+  scale_x_discrete(labels = c("High Activity\n(FAF ≥ 1.5)", "Low Activity\n(FAF < 1.5) ")) +
+  labs(
+    title = "Body Weight Distribution by Physical Activity Level",
+    x = "Physical Activity Level",
+    y = "Weight (kg)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    legend.position = "none",
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12)
+  )
+```
+
+The boxplot shows the difference in weight distributions between the two physical activity groups. The median weight for the Low Activity group is noticeably higher than that of the High Activity group, with the center of the Low Activity distribution shifted upward. Both groups show some outliers, but the overall pattern shows that individuals with higher physical activity frequency tend to have lower body weights.
+
+```{r scatter-plot, fig.width=8, fig.height=6}
+obesity <- obesity %>%
+  mutate(Activity_Level = ifelse(FAF < 1.5, "Low Activity", "High Activity"))
+
+# Create the plot
+ggplot(obesity, aes(x = FAF, y = Weight, color = Activity_Level)) +
+  geom_point(alpha = 0.5, width = 0.05, height = 0) +
+  geom_smooth(method = "lm", se = TRUE, color = "#2c3e50", linewidth = 1.2) +
+  scale_color_manual(values = c("Low Activity" = "#7fbfff", 
+                                 "High Activity" = "#ff7f7f")) +
+  labs(
+    title = "Relationship Between Physical Activity Frequency and Body Weight",
+    subtitle = "Low Activity: FAF < 1.5  |  High Activity: FAF ≥ 1.5",
+    x = "Physical Activity Frequency (FAF)",
+    y = "Weight (kg)",
+    color = "Activity Level"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    plot.subtitle = element_text(hjust = 0.5, size = 10, color = "black"),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    legend.position = "top"
+  )
+```
+
+This scatter plot reveals a negative relationship between physical activity frequency and body weight. As physical activity frequency increases, weight tends to go down—you can see this from the red line going downward. However, the relationship appears to be moderate in strength rather than strong. While there is a clear downward trend, there's considerable variation in weight at each activity level, as shown by the wide spread of points around the trend line. This suggests that while physical activity frequency is associated with body weight, it's not the only factor influencing weight—other variables like diet, genetics, and lifestyle habits likely play important roles as well.  The relationship seems relatively consistent across the range of activity frequencies, supporting our hypothesis that physical activity level is associated with body weight.
+
+We assume that the relationship between physical activity frequency and body weight is relatively stable across the populations sampled (Mexico, Peru, and Colombia) and that the patterns observed in this dataset can probably apply to similar populations in other places. Based on this assumption, the results from this analysis can provide more information into the relationship between physical activity and body weight.
+
+## Statistical Analysis
+
+In this study, we are investigating the difference in body weight between individuals with low physical activity frequency and those with high physical activity frequency. We will use a two-sided hypothesis test to determine whether there is a statistically significant difference between these groups.
+
+### Parameter of Interest
+
+The parameters of interest are the true mean body weights:
+
+- μ_x: The true average body weight for individuals with low physical activity (FAF < 1.5).
+- μ_y: The true average body weight for individuals with high physical activity (FAF ≥ 1.5).
+
+### Type of Inference
+
+We're using a Welch's two-sample *t*-test to compare the two groups to test for a significant difference between the two population means.
+
+**Assumptions:**
+
+**Independence**: Our two groups are separate—each person is either in the low activity group or the high activity group, but not both. As individuals are categorized into groups based on their physical activity levels.
+
+### Hypotheses
+
+The hypotheses for this analysis are:
+
+X = Body Weight for Low Activity Individuals ~ D_x(μ_x, σ_x)
+
+Y = Body Weight for High Activity Individuals ~ D_y(μ_y, σ_y)
+
+**H₀**: μ_x = μ_y  ⟹  μ_x - μ_y = 0  
+(There is no difference in mean body weight between low and high physical activity groups)
+
+**H_a**: μ_x ≠ μ_y  ⟹  μ_x - μ_y ≠ 0  
+(There is a difference in mean body weight between low and high physical activity groups)
+
+### Test Statistic and Null Distribution
+
+The test statistic is calculated as:
+
+\[ t = \frac{\bar{x} - \bar{y}}{\sqrt{\frac{s_x^2}{n_x} + \frac{s_y^2}{n_y}}} \]
+
+where:
+
+- x̄, ȳ: Sample means for Low Activity and High Activity groups, respectively.
+- s²_x, s²_y: Sample variances for Low Activity and High Activity groups, respectively.
+- n_x, n_y: Sample sizes for Low Activity and High Activity groups, respectively.
+
+The degrees of freedom (w) are calculated using Welch's formula:
+
+\[ w = \frac{\left( \frac{s_x^2}{n_x} + \frac{s_y^2}{n_y} \right)^2}{\frac{\left( \frac{s_x^2}{n_x} \right)^2}{n_x - 1} + \frac{\left( \frac{s_y^2}{n_y} \right)^2}{n_y - 1}} \]
+
+### Results
+
+```{r}
+low_activity <- obesity %>% filter(Activity_Level == "Low Activity") %>% pull(Weight)
+high_activity <- obesity %>% filter(Activity_Level == "High Activity") %>% pull(Weight)
+
+test_result <- t.test(low_activity, high_activity, alternative = "two.sided")
+```
+**Test Statistic (t)**: **3.10065** indicating the observed difference in mean weights is approximately 3.1 standard errors away from zero.
+
+**Degrees of Freedom (df)**: **1048.297** (using the Welch's approximation for unequal variances)
+
+**P-value**: **1.982534e-03**, which is much smaller than the significance level (α = 0.05)
+
+### Interpretation: Compare p-value with α = 0.05
+
+```{r interpretation, echo=FALSE}
+alpha <- 0.05
+```
+
+**Reject the null hypothesis**: We have strong evidence that there is a significant difference in mean body weight between individuals with low physical activity frequency and those with high physical activity frequency (p-value = 1.982534e-03, two-sided test).
+
+```{r confidence-interval}
+ci_lower <- round(test_result$conf.int[1], 5)
+ci_upper <- round(test_result$conf.int[2], 5)
+```
+
+**95% Confidence Interval** for (Low Activity to High Activity): **1.4855 to 6.60645**
+
+
+The **95% confidence interval** for the difference in mean body weight between Low Activity and High Activity individuals is **[`r round(ci_lower, 2)`, `r round(ci_upper, 2)`] kg**. Since the confidence interval does not include 0, we can also conclude based on the CI that there is a statistically significant difference in mean body weight between the two groups. Basically, people who don't exercise much weigh more on average than people who exercise regularly.
+
+## Discussion
+
+### Further Interpretation
+
+The results of our analysis show that the p-value (1.982534e-03) is much less than the significance level of 0.05. This provides strong evidence to reject the null hypothesis and conclude that the mean body weight for individuals with low physical activity frequency is significantly different from (and specifically, higher than) the mean body weight for individuals with high physical activity frequency.
+
+What does our p-value represent? It is the probability of seeing a weight difference this large (or larger) if exercise didn't actually matter at all. A very small p-value, as seen here, indicates that it is highly unlikely that the mean body weights between Low Activity and High Activity individuals are equal.
+
+Furthermore, our 95% confidence interval of [1.49, 6.61] kg means we're 95% confident that low-activity people weigh somewhere between 1.49 and 6.61 kg more than high-activity people. Since this entire range is positive (above zero), it supports our hypothesis test result.
+
+The combination of the small p-value and the confidence interval entirely above zero provides strong evidence of an association between physical activity frequency and body weight.
+
+### Shortcomings of the Analysis
+
+Our analysis has several important limitations to consider. First, approximately 77% of the dataset consists of synthetically generated records. While the SMOTE technique tries to make it realistic, having so much synthetic data means our results might not apply as well to real people. Additionally, the directly collected portion (23%) relies on self-reported information, which is prone to reporting bias. Participants may overestimate physical activity or inaccurately report their weight and other characteristics.
+
+Another key limitation is the cross-sectional design of this study. For this dataset we're just looking at one point in time, so we can't actually prove that not exercising causes weight gain. We can only say they're related. There could be other things like diet, genetics, income that affect both exercise and weight. The analysis also does not account for potentially important factors such as dietary habits and caloric intake, genetic predisposition to weight gain, socioeconomic status and access to exercise facilities, medical conditions affecting weight or ability to exercise, and medication use that may impact weight.
+
+Furthermore, the data is limited to individuals from Mexico, Peru, and Colombia. Findings may not generalize to populations in other regions with different cultural, dietary, or lifestyle patterns. Finally, the FAF variable provides a simplified measure of physical activity frequency but does not capture intensity, duration, or type of activity, which may all be important factors in the relationship with body weight.
+
+### Additional Questions and Recommendations for Future Research
+
+1. **Longitudinal Studies**: Conducting longitudinal research that follows individuals over time could help establish whether changes in physical activity frequency lead to changes in body weight, providing stronger evidence for causation.
+
+2. **Additional Variables**: Including additional variables such as dietary habits, caloric intake, sleep patterns, and stress levels in a multivariate analysis could provide a more comprehensive understanding of factors affecting body weight.
+
+3. **Different Activity Types**: Analyzing whether different types of physical activity (aerobic exercise, strength training, sports, etc.) have different associations with body weight could inform more targeted recommendations.
+
+4. **Geographic Expansion**: Replicating this analysis with data from other countries or regions could reveal whether the observed patterns are universal or culture-specific.
+
+
+### Conclusion  
+Our analysis shows strong evidence that exercise frequency and weight are related. People who exercise regularly weigh less on average than people who rarely exercise. These findings can directly inform public health strategies by providing measurable evidence to support investments in community fitness programs, workplace wellness initiatives, and urban infrastructure that encourages physical activity. Health organizations can use these results to prioritize resources toward populations with lower activity levels, and healthcare providers can counsel patients with concrete data showing the meaningful weight differences associated with regular exercise. This makes sense based on what we know about health, but we should keep the limitations in mind, especially the synthetic data and the fact that we can't prove causation. Future studies that address these issues could give us even better insights into how exercise affects weight and help design more effective interventions for weight management at the population level.
+
+
+
