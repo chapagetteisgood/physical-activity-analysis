@@ -18,6 +18,3 @@ R, ggplot2, dplyr
 
 [Obesity Levels Dataset](https://archive.ics.uci.edu/dataset/544/estimation+of+obesity+levels+based+on+eating+habits+and+physical+condition) from the UCI Machine Learning Repository. 2,111 records with variables including weight, physical activity frequency, gender, age, and height.
 
-## Author
-
-Vincent Pham 
